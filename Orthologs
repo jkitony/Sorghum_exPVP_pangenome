@@ -1,0 +1,76 @@
+
+
+cd /data1/jkitony/my_workflows
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+# Install Miniforge in this directory
+bash Miniforge3-Linux-x86_64.sh -b \
+    -p /data1/jkitony/my_workflows/miniforge3
+
+# Initialize Conda for the current session
+source /data1/jkitony/my_workflows/miniforge3/etc/profile.d/conda.sh
+
+# Verify installation
+conda --version
+mamba --version
+
+# Proteins directory
+cd /data1/jkitony/Sorghum/Orthologs_GO_analysis_50
+
+# Create environment
+mamba create -n orthofinder_env -c conda-forge -c bioconda \
+    --strict-channel-priority orthofinder diamond fasttree mafft -y
+
+# Initialize
+eval "$(mamba shell hook --shell bash)"
+
+# Activate
+mamba activate orthofinder_env
+
+orthofinder --version : OrthoFinder:v3.2
+diamond version:diamond version 2.2.8
+
+# For future
+/data1/jkitony/my_workflows/miniforge3/bin/conda init bash
+
+# Prepare the 46 ex-PVP files
+
+cd /data1/jkitony/Sorghum/Orthologs_GO_analysis_50
+
+mkdir -p proteins_ExPVP_only
+
+for f in proteins/ExPVP_*.fasta; do
+    ln -sfn "$(realpath "$f")" proteins_ExPVP_only/
+done
+
+find proteins_ExPVP_only -maxdepth 1 \
+    -name 'ExPVP_*.fasta' | wc -l
+
+################
+#screen 
+##############
+screen -S pankmersbic46
+screen -ls
+screen -r
+screen -X -S 1740766.edta_nature quit
+Ctrl + A, then Ctrl + D
+screen -X -S session_id quit
+# Initialize
+eval "$(mamba shell hook --shell bash)"
+# Activate
+mamba activate orthofinder_env
+
+tail -f logs/orthofinder_ExPVP46.log
+# Run OrthoFinder
+
+mkdir -p results logs
+
+orthofinder \
+    -f proteins_ExPVP_only \
+    -S diamond \
+    -M msa \
+    -A mafft \
+    -T fasttree \
+    -t 32 \
+    -a 8 \
+    -o results/ExPVP_46_OrthoFinder \
+    2>&1 | tee logs/orthofinder_ExPVP46.log
